@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=16">
+  <link rel="stylesheet" href="styles.css?v=21">
 </head>
 <body data-theme="light">
   <div class="app-shell">
@@ -30,13 +30,16 @@
             <button class="icon-button" id="themeBtn" title="Đổi giao diện" aria-label="Đổi giao diện">☼</button>
             <div class="theme-dropdown" id="themeDropdown" hidden>
               <div class="theme-dropdown-title">Chọn giao diện</div>
-              <button class="theme-option" data-theme-pick="light"><span class="theme-swatch swatch-light"></span><span>Sáng</span></button>
-              <button class="theme-option" data-theme-pick="dark"><span class="theme-swatch swatch-dark"></span><span>Tối</span></button>
-              <button class="theme-option" data-theme-pick="pastel-pink"><span class="theme-swatch swatch-pink"></span><span>Hồng</span></button>
-              <button class="theme-option" data-theme-pick="pastel-blue"><span class="theme-swatch swatch-blue"></span><span>Xanh dương</span></button>
-              <button class="theme-option" data-theme-pick="pastel-mint"><span class="theme-swatch swatch-mint"></span><span>Mint</span></button>
+              <button class="theme-option" data-theme-pick="light"><span class="theme-swatch swatch-light"></span><span>Xanh trời</span></button>
+              <button class="theme-option" data-theme-pick="pastel-blue"><span class="theme-swatch swatch-blue"></span><span>Xanh đậm</span></button>
+              <button class="theme-option" data-theme-pick="sea"><span class="theme-swatch swatch-sea"></span><span>Biển</span></button>
+              <button class="theme-option" data-theme-pick="pastel-mint"><span class="theme-swatch swatch-mint"></span><span>Xanh lá</span></button>
               <button class="theme-option" data-theme-pick="pastel-lavender"><span class="theme-swatch swatch-lavender"></span><span>Tím</span></button>
-              <button class="theme-option" data-theme-pick="pastel-peach"><span class="theme-swatch swatch-peach"></span><span>Cam đào</span></button>
+              <button class="theme-option" data-theme-pick="pastel-pink"><span class="theme-swatch swatch-pink"></span><span>Hồng</span></button>
+              <button class="theme-option" data-theme-pick="ink-red"><span class="theme-swatch swatch-red"></span><span>Đỏ</span></button>
+              <button class="theme-option" data-theme-pick="pastel-peach"><span class="theme-swatch swatch-peach"></span><span>Cam</span></button>
+              <button class="theme-option" data-theme-pick="ink-gold"><span class="theme-swatch swatch-gold"></span><span>Vàng</span></button>
+              <button class="theme-option" data-theme-pick="dark"><span class="theme-swatch swatch-dark"></span><span>Tối</span></button>
             </div>
           </div>
           <button class="icon-button" id="settingsTopBtn" title="Cài đặt" aria-label="Cài đặt">⚙</button>
@@ -59,6 +62,7 @@
         <button class="nav-item" data-view="pomodoro"><span class="nav-glyph" aria-hidden="true">▶</span><span class="nav-label">Focus</span></button>
         <button class="nav-item" data-view="mood"><span class="nav-glyph" aria-hidden="true">☺</span><span class="nav-label">Mood</span></button>
         <button class="nav-item" data-view="habit"><span class="nav-glyph" aria-hidden="true">✦</span><span class="nav-label">Habit</span></button>
+        <button class="nav-item" data-view="atelier"><span class="nav-glyph" aria-hidden="true">⌂</span><span class="nav-label">Xưởng</span></button>
       </nav>
     </div>
 
@@ -254,6 +258,10 @@
           <h3>Chưa có thói quen nào</h3>
           <p>Bấm “Thêm thói quen” để bắt đầu xây dựng routine hàng ngày.</p>
         </div>
+      </section>
+
+      <section id="atelierPage" class="atelier-page" hidden>
+        <div id="atelierRoot"></div>
       </section>
 
       <section class="content-grid">
@@ -493,6 +501,8 @@
 
   <audio id="pomoBellEl" src="pomo-bell.mp3?v=22" preload="auto" playsinline></audio>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=26"></script>
+  <script src="atelier-lib.js?v=1"></script>
+  <script src="atelier.js?v=1"></script>
+  <script src="app.js?v=32"></script>
 </body>
 </html>

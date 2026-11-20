@@ -19,7 +19,7 @@ def now_iso():
     return datetime.now(timezone.utc).isoformat()
 
 def empty_store():
-    return {"tasks": [], "moods": {}, "habits": [], "settings": {}, "deletedTasks": {}, "deletedHabits": {}}
+    return {"tasks": [], "moods": {}, "habits": [], "settings": {}, "deletedTasks": {}, "deletedHabits": {}, "atelier": None}
 
 def load_store():
     if not DATA.exists():
@@ -90,6 +90,11 @@ def merge(current, incoming):
     if newer(incoming_settings.get("updatedAt"), settings.get("updatedAt")):
         settings = incoming_settings
 
+    atelier = current.get("atelier")
+    incoming_atelier = incoming.get("atelier")
+    if incoming_atelier and (not atelier or newer(incoming_atelier.get("updatedAt"), (atelier or {}).get("updatedAt"))):
+        atelier = incoming_atelier
+
     return {
         "tasks": task_list,
         "moods": moods,
@@ -97,6 +102,7 @@ def merge(current, incoming):
         "settings": settings,
         "deletedTasks": deleted_tasks,
         "deletedHabits": deleted_habits,
+        "atelier": atelier,
         "syncedAt": now_iso(),
     }
 
@@ -127,6 +133,7 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Cache-Control", "no-store")
         super().end_headers()
 
     def do_OPTIONS(self):

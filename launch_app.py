@@ -78,7 +78,7 @@ def main():
             time.sleep(0.1)
     window = webview.create_window(
         "Deadline Buddy",
-        f"http://127.0.0.1:{sync_server.PORT}",
+        f"http://127.0.0.1:{sync_server.PORT}/?v=28",
         width=1280,
         height=840,
         min_size=(900, 640),

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0f172a">
   <title>Deadline Buddy</title>
-  <link rel="stylesheet" href="styles.css?v=3">
+  <link rel="stylesheet" href="styles.css?v=7">
 </head>
 <body data-theme="light">
   <header class="appbar">
@@ -17,13 +17,16 @@
       <div class="theme-picker-wrap">
         <button class="icon-button" id="themeBtn" type="button" aria-label="Đổi giao diện">☼</button>
         <div class="theme-dropdown" id="themeDropdown" hidden>
-          <button class="theme-option" data-theme-pick="light" type="button">Sáng</button>
-          <button class="theme-option" data-theme-pick="dark" type="button">Tối</button>
-          <button class="theme-option" data-theme-pick="pastel-pink" type="button">Hồng</button>
-          <button class="theme-option" data-theme-pick="pastel-blue" type="button">Xanh dương</button>
-          <button class="theme-option" data-theme-pick="pastel-mint" type="button">Mint</button>
+          <button class="theme-option" data-theme-pick="light" type="button">Xanh trời</button>
+          <button class="theme-option" data-theme-pick="pastel-blue" type="button">Xanh đậm</button>
+          <button class="theme-option" data-theme-pick="sea" type="button">Biển</button>
+          <button class="theme-option" data-theme-pick="pastel-mint" type="button">Xanh lá</button>
           <button class="theme-option" data-theme-pick="pastel-lavender" type="button">Tím</button>
-          <button class="theme-option" data-theme-pick="pastel-peach" type="button">Cam đào</button>
+          <button class="theme-option" data-theme-pick="pastel-pink" type="button">Hồng</button>
+          <button class="theme-option" data-theme-pick="ink-red" type="button">Đỏ</button>
+          <button class="theme-option" data-theme-pick="pastel-peach" type="button">Cam</button>
+          <button class="theme-option" data-theme-pick="ink-gold" type="button">Vàng</button>
+          <button class="theme-option" data-theme-pick="dark" type="button">Tối</button>
         </div>
       </div>
       <button class="icon-button" id="notificationBtn" type="button" aria-label="Bật thông báo">🔔</button>
@@ -170,6 +173,10 @@
       </div>
     </section>
 
+    <section id="atelierPage" class="atelier-page" hidden>
+      <div id="atelierRoot"></div>
+    </section>
+
     <section class="content-grid">
       <div class="task-panel">
         <div class="scope-row" id="scopeRow">
@@ -218,6 +225,7 @@
     <button class="nav-item" data-view="pomodoro" type="button"><span class="nav-glyph">▶</span><span class="nav-label">Focus</span></button>
     <button class="nav-item" data-view="mood" type="button"><span class="nav-glyph">☺</span><span class="nav-label">Mood</span></button>
     <button class="nav-item" data-view="habit" type="button"><span class="nav-glyph">✦</span><span class="nav-label">Habit</span></button>
+    <button class="nav-item" data-view="atelier" type="button"><span class="nav-glyph">⌂</span><span class="nav-label">Xưởng</span></button>
   </nav>
 
   <div class="modal-backdrop" id="taskModal" hidden>
@@ -349,6 +357,8 @@
 
   <audio id="pomoBellEl" src="pomo-bell.mp3?v=22" preload="auto" playsinline></audio>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=26"></script>
+  <script src="atelier-lib.js?v=1"></script>
+  <script src="atelier.js?v=1"></script>
+  <script src="app.js?v=32"></script>
 </body>
 </html>
