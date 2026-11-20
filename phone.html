@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <title>Deadline Buddy</title>
+  <link rel="stylesheet" href="styles.css?v=3">
+</head>
+<body data-theme="light">
+  <header class="appbar">
+    <div>
+      <strong id="pageLabel">Task</strong>
+      <span id="todayDate"></span>
+    </div>
+    <div class="appbar-actions">
+      <div class="theme-picker-wrap">
+        <button class="icon-button" id="themeBtn" type="button" aria-label="Đổi giao diện">☼</button>
+        <div class="theme-dropdown" id="themeDropdown" hidden>
+          <button class="theme-option" data-theme-pick="light" type="button">Sáng</button>
+          <button class="theme-option" data-theme-pick="dark" type="button">Tối</button>
+          <button class="theme-option" data-theme-pick="pastel-pink" type="button">Hồng</button>
+          <button class="theme-option" data-theme-pick="pastel-blue" type="button">Xanh dương</button>
+          <button class="theme-option" data-theme-pick="pastel-mint" type="button">Mint</button>
+          <button class="theme-option" data-theme-pick="pastel-lavender" type="button">Tím</button>
+          <button class="theme-option" data-theme-pick="pastel-peach" type="button">Cam đào</button>
+        </div>
+      </div>
+      <button class="icon-button" id="notificationBtn" type="button" aria-label="Bật thông báo">🔔</button>
+      <button class="icon-button" id="settingsTopBtn" type="button" aria-label="Cài đặt">⚙</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="page-heading">
+      <p class="eyebrow" id="eyebrow">VIỆC CHƯA XONG</p>
+      <h1 id="heading">Hôm nay</h1>
+      <p id="subheading">Mọi việc chưa xong.</p>
+    </section>
+
+    <section class="stats-grid" aria-label="Tổng quan">
+      <article class="stat-card"><span>Chưa xong</span><strong id="openStat">0</strong></article>
+      <article class="stat-card"><span>48 giờ</span><strong id="dueStat">0</strong></article>
+      <article class="stat-card"><span>Đã xong</span><strong id="doneStat">0</strong></article>
+    </section>
+
+    <section id="monthCalendar" class="month-calendar" hidden>
+      <div class="month-toolbar">
+        <h2 id="monthTitle">Tháng này</h2>
+        <div class="month-actions">
+          <div class="cal-modes" id="calModes">
+            <button class="cal-mode" data-cal="day" type="button">Ngày</button>
+            <button class="cal-mode" data-cal="week" type="button">Tuần</button>
+            <button class="cal-mode selected" data-cal="month" type="button">Tháng</button>
+          </div>
+          <button class="secondary-button" id="monthTodayBtn" type="button">Hôm nay</button>
+          <button class="month-arrow" id="monthPrevBtn" type="button" aria-label="Kỳ trước">‹</button>
+          <button class="month-arrow" id="monthNextBtn" type="button" aria-label="Kỳ sau">›</button>
+        </div>
+      </div>
+      <div class="month-weekdays" aria-hidden="true"><span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span><span>CN</span></div>
+      <div id="monthGrid" class="month-grid"></div>
+      <div id="calBoard" class="cal-board" hidden></div>
+      <section class="month-agenda">
+        <div class="month-agenda-head">
+          <div>
+            <h3 id="monthAgendaTitle">Deadline trong ngày</h3>
+            <p id="monthAgendaSubtitle">Chọn một ngày.</p>
+          </div>
+          <button class="primary-button" id="addTaskOnDateBtn" type="button">Thêm task</button>
+        </div>
+        <div id="monthAgendaTasks"></div>
+      </section>
+    </section>
+
+    <section id="pomodoroPage" class="pomodoro-page" hidden>
+      <div class="pomo-now-card">
+        <span class="kicker">Giờ hiện tại</span>
+        <div class="flip-clock" id="pomoNow" aria-label="Giờ hiện tại">
+          <div class="flip-card" data-value=""><span class="flip-top">0</span><span class="flip-bottom">0</span><span class="flip-flap">0</span></div>
+          <div class="flip-card" data-value=""><span class="flip-top">0</span><span class="flip-bottom">0</span><span class="flip-flap">0</span></div>
+          <span class="flip-colon">:</span>
+          <div class="flip-card" data-value=""><span class="flip-top">0</span><span class="flip-bottom">0</span><span class="flip-flap">0</span></div>
+          <div class="flip-card" data-value=""><span class="flip-top">0</span><span class="flip-bottom">0</span><span class="flip-flap">0</span></div>
+        </div>
+      </div>
+      <div class="pomo-session">
+        <div class="pomo-circle-wrap">
+          <svg class="pomo-ring" viewBox="0 0 200 200">
+            <circle class="pomo-ring-bg" cx="100" cy="100" r="88" fill="none" stroke-width="8"/>
+            <circle class="pomo-ring-fill" id="pomoRingFill" cx="100" cy="100" r="88" fill="none" stroke-width="8" stroke-linecap="butt" transform="rotate(-90 100 100)"/>
+          </svg>
+          <div class="pomo-circle-inner">
+            <div class="pomo-stage" id="pomoStage">Phiên học</div>
+            <div class="pomo-clock" id="pomoClock">50:00</div>
+          </div>
+        </div>
+        <div class="pomo-controls">
+          <button class="secondary-button" id="pomoResetBtn" type="button">Đặt lại</button>
+          <button class="primary-button" id="pomoStartBtn" type="button">Bắt đầu</button>
+          <button class="secondary-button" id="pomoSkipBtn" type="button">Bỏ qua</button>
+        </div>
+        <button class="secondary-button pomo-bell-btn" id="pomoBellBtn" type="button">Thử chuông</button>
+        <p class="pomo-hint" id="pomoHint"></p>
+      </div>
+      <div class="pomo-focus" id="pomoFocus"></div>
+      <section class="pomo-history" id="pomoHistory">
+        <div class="pomo-history-head">
+          <h3>Lịch sử Focus</h3>
+          <div class="pomo-hist-nav">
+            <button type="button" class="month-arrow" id="pomoHistPrev" aria-label="Tháng trước">‹</button>
+            <strong id="pomoHistTitle">Tháng này</strong>
+            <button type="button" class="month-arrow" id="pomoHistNext" aria-label="Tháng sau">›</button>
+          </div>
+        </div>
+        <form class="pomo-setup" id="pomoSetup">
+          <label>Tập trung (phút)<input id="pomoFocusMin" type="number" min="1" max="180" inputmode="numeric"></label>
+          <label>Nghỉ ngắn<input id="pomoShortMin" type="number" min="1" max="60" inputmode="numeric"></label>
+          <label>Nghỉ dài<input id="pomoLongMin" type="number" min="1" max="120" inputmode="numeric"></label>
+          <label>Phiên trước nghỉ dài<input id="pomoRounds" type="number" min="1" max="8" inputmode="numeric"></label>
+          <button type="submit" class="secondary-button" id="pomoSaveSetup">Lưu giờ</button>
+        </form>
+        <div class="pomo-hist-weekdays" aria-hidden="true"><span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span><span>CN</span></div>
+        <div id="pomoHistGrid" class="pomo-hist-grid"></div>
+        <div id="pomoHistDay" class="pomo-hist-day"></div>
+      </section>
+    </section>
+
+    <section id="moodPage" class="mood-page" hidden>
+      <div class="sheet">
+        <h2>Hôm nay thế nào?</h2>
+        <div class="mood-emoji-row" id="moodEmojiRow">
+          <button class="mood-emoji-btn" data-mood="amazing" type="button"><span class="mood-emoji">🤩</span><span class="mood-emoji-label">Tuyệt</span></button>
+          <button class="mood-emoji-btn" data-mood="good" type="button"><span class="mood-emoji">😊</span><span class="mood-emoji-label">Vui</span></button>
+          <button class="mood-emoji-btn" data-mood="okay" type="button"><span class="mood-emoji">😐</span><span class="mood-emoji-label">Ổn</span></button>
+          <button class="mood-emoji-btn" data-mood="bad" type="button"><span class="mood-emoji">😔</span><span class="mood-emoji-label">Không ổn</span></button>
+          <button class="mood-emoji-btn" data-mood="terrible" type="button"><span class="mood-emoji">😫</span><span class="mood-emoji-label">Tệ</span></button>
+        </div>
+        <textarea class="form-control" id="moodNote" rows="2" maxlength="300" placeholder="Ghi chú, không bắt buộc"></textarea>
+        <button class="primary-button block" id="saveMoodBtn" type="button">Lưu tâm trạng</button>
+      </div>
+      <div class="scope-row" id="moodSpan">
+        <button class="scope-chip selected" type="button" data-mood-span="week">Tuần</button>
+        <button class="scope-chip" type="button" data-mood-span="month">Tháng</button>
+      </div>
+      <div class="tracker-nav">
+        <button class="month-arrow" id="moodPrevBtn" type="button" aria-label="Kỳ trước">‹</button>
+        <strong id="moodSpanTitle">Tuần này</strong>
+        <button class="month-arrow" id="moodNextBtn" type="button" aria-label="Kỳ sau">›</button>
+      </div>
+      <div class="mood-average" id="moodAverage"></div>
+      <div class="mood-chart" id="moodChart"></div>
+      <div class="mood-log" id="moodLog"></div>
+    </section>
+
+    <section id="habitPage" class="habit-page" hidden>
+      <div class="habit-header">
+        <h2>Thói quen</h2>
+        <button class="primary-button" id="addHabitBtn" type="button">Thêm</button>
+      </div>
+      <div class="tracker-nav">
+        <button class="month-arrow" id="habitPrevBtn" type="button" aria-label="Tháng trước">‹</button>
+        <strong id="habitMonthTitle">Tháng này</strong>
+        <button class="month-arrow" id="habitNextBtn" type="button" aria-label="Tháng sau">›</button>
+      </div>
+      <div class="habit-list" id="habitList"></div>
+      <div class="habit-empty sheet" id="habitEmpty">
+        <h3>Chưa có thói quen</h3>
+        <p>Thêm một việc nhỏ và đánh dấu mỗi ngày.</p>
+      </div>
+    </section>
+
+    <section class="content-grid">
+      <div class="task-panel">
+        <div class="scope-row" id="scopeRow">
+          <button class="scope-chip selected" data-scope="today" type="button">Hôm nay</button>
+          <button class="scope-chip" data-scope="upcoming" type="button">Sắp hạn</button>
+          <button class="scope-chip" data-scope="all" type="button">Tất cả</button>
+          <button class="scope-chip" data-scope="done" type="button">Xong</button>
+        </div>
+        <div class="panel-tools">
+          <select id="sortSelect" aria-label="Sắp xếp">
+            <option value="deadline">Gần hạn</option>
+            <option value="priority">Ưu tiên</option>
+            <option value="created">Mới tạo</option>
+          </select>
+        </div>
+        <h2 id="listTitle" class="sr-only">Hôm nay</h2>
+        <p id="listDescription" class="sr-only">Việc chưa xong</p>
+        <div class="filter-row" id="filterRow">
+          <button class="filter-chip selected" data-filter="all" type="button">Tất cả</button>
+          <button class="filter-chip" data-filter="not-started" type="button">Chưa làm</button>
+          <button class="filter-chip" data-filter="in-progress" type="button">Đang làm</button>
+          <button class="filter-chip" data-filter="overdue" type="button">Quá hạn</button>
+        </div>
+        <div id="taskList" class="task-list"></div>
+        <div id="emptyState" class="empty-state" hidden>
+          <h3>Chưa có việc</h3>
+          <p>Thêm task đầu tiên.</p>
+          <button class="secondary-button" id="emptyAddBtn" type="button">Thêm task</button>
+        </div>
+      </div>
+      <div class="sr-only" aria-hidden="true">
+        <div id="weekStrip"></div>
+        <div id="weekTasks"></div>
+        <button id="viewRulesBtn" type="button">Quy tắc</button>
+      </div>
+    </section>
+    <p id="saveStatus" class="save-line"><i></i> Đã lưu trên máy</p>
+  </main>
+
+  <button class="secondary-button quick-add" id="dumpTaskBtn" type="button">Nhập nhanh nhiều task</button>
+  <button class="fab" id="addTaskBtn" type="button" aria-label="Thêm task">+</button>
+
+  <nav class="tabbar" aria-label="Điều hướng chính">
+    <button class="nav-item active" data-view="tasks" type="button"><span class="nav-glyph">✓</span><span class="nav-label">Task</span><span class="nav-count" id="todayCount">0</span></button>
+    <button class="nav-item" data-view="month" type="button"><span class="nav-glyph">▦</span><span class="nav-label">Lịch</span></button>
+    <button class="nav-item" data-view="pomodoro" type="button"><span class="nav-glyph">▶</span><span class="nav-label">Focus</span></button>
+    <button class="nav-item" data-view="mood" type="button"><span class="nav-glyph">☺</span><span class="nav-label">Mood</span></button>
+    <button class="nav-item" data-view="habit" type="button"><span class="nav-glyph">✦</span><span class="nav-label">Habit</span></button>
+  </nav>
+
+  <div class="modal-backdrop" id="taskModal" hidden>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-header"><h2 id="modalTitle">Thêm task mới</h2><button class="close-button" data-close="taskModal" type="button" aria-label="Đóng">×</button></div>
+      <form id="taskForm">
+        <input type="hidden" id="taskId">
+        <label class="field-label" for="taskTitle">Tên task <span>*</span></label>
+        <input class="form-control" id="taskTitle" required maxlength="120" placeholder="Ví dụ: BTVN giải tích 25/11 17h">
+        <p class="dump-hint">Gõ hạn trong tên: 25/11 17h, ngày 2/12, mai, thứ 6.</p>
+        <label class="field-label" for="taskCategory">Môn học</label>
+        <input class="form-control" id="taskCategory" maxlength="60" placeholder="Giải tích">
+        <label class="field-label" for="taskDue">Deadline <span>*</span></label>
+        <input class="form-control" id="taskDue" type="datetime-local" required>
+        <label class="field-label" for="taskPriority">Ưu tiên</label>
+        <select class="form-control" id="taskPriority"><option value="medium">Bình thường</option><option value="high">Cao</option><option value="low">Thấp</option></select>
+        <label class="field-label" for="taskEstimate">Thời lượng</label>
+        <select class="form-control" id="taskEstimate"><option value="15">15 phút</option><option value="30">30 phút</option><option value="60" selected>1 giờ</option><option value="90">1,5 giờ</option><option value="120">2 giờ</option><option value="180">3 giờ</option></select>
+        <label class="field-label" for="taskNotes">Ghi chú</label>
+        <textarea class="form-control" id="taskNotes" rows="3" maxlength="1000" placeholder="Bước đầu tiên là gì?"></textarea>
+        <div class="reminder-preview" id="reminderPreview"><strong>Lịch nhắc</strong><p>Thêm deadline để xem lịch nhắc.</p></div>
+        <div class="modal-actions">
+          <button type="button" class="text-button danger-text" id="deleteTaskBtn" hidden>Xóa</button>
+          <button type="button" class="secondary-button" data-close="taskModal">Hủy</button>
+          <button type="submit" class="primary-button">Lưu</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" id="dumpModal" hidden>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="dumpModalTitle">
+      <div class="modal-header">
+        <h2 id="dumpModalTitle">Nhập nhanh nhiều task</h2>
+        <button class="close-button" data-close="dumpModal" type="button" aria-label="Đóng">×</button>
+      </div>
+      <form id="dumpForm">
+        <label class="field-label" for="dumpLines">Mỗi dòng là một task</label>
+        <textarea class="form-control dump-lines" id="dumpLines" rows="8" placeholder="BTVN Giải tích&#10;Ôn chương 1&#10;Nộp bài lab"></textarea>
+        <label class="field-label" for="dumpDue">Deadline mặc định</label>
+        <input class="form-control" id="dumpDue" type="date">
+        <p class="dump-hint">Để trống nếu chưa muốn đặt hạn.</p>
+        <div class="modal-actions dump-actions">
+          <button type="button" class="secondary-button" data-close="dumpModal">Hủy</button>
+          <button type="submit" class="primary-button" id="dumpCreateBtn">Tạo tất cả</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" id="settingsModal" hidden>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <div class="modal-header"><h2 id="settingsTitle">Cài đặt</h2><button class="close-button" data-close="settingsModal" type="button" aria-label="Đóng">×</button></div>
+      <div class="setting-line"><div><strong>Sáng</strong></div><input type="time" id="morningDigestTime" value="08:00"></div>
+      <div class="setting-line"><div><strong>Tối tổng hợp</strong></div><input type="time" id="eveningDigestTime" value="20:00"></div>
+      <div class="setting-line"><div><strong>Trưa</strong></div><input type="time" id="noonTime" value="12:00"></div>
+      <div class="setting-line"><div><strong>Tối</strong></div><input type="time" id="eveningTime" value="19:00"></div>
+      <div class="setting-line"><div><strong>Tối muộn</strong></div><input type="time" id="lateTime" value="21:00"></div>
+      <div class="setting-note">
+        <strong>Đồng bộ máy tính</strong>
+        <p id="syncHint">Cùng Wi-Fi, dán địa chỉ máy tính đang chạy run.bat.</p>
+        <input class="form-control" id="syncUrlInput" inputmode="url" placeholder="http://192.168.1.10:8000" autocomplete="off">
+        <button class="secondary-button block" id="syncNowBtn" type="button">Đồng bộ ngay</button>
+      </div>
+      <div class="backup-row">
+        <button class="secondary-button" id="exportBtn" type="button">Xuất</button>
+        <button class="secondary-button" id="importBtn" type="button">Nhập</button>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+        <button class="secondary-button" id="settingsBtn" type="button">Nhắc</button>
+      </div>
+      <div class="modal-actions">
+        <button class="secondary-button" data-close="settingsModal" type="button">Đóng</button>
+        <button class="primary-button" id="saveSettingsBtn" type="button">Lưu</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" id="habitModal" hidden>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="habitModalTitle">
+      <div class="modal-header"><h2 id="habitModalTitle">Thói quen mới</h2><button class="close-button" data-close="habitModal" type="button" aria-label="Đóng">×</button></div>
+      <form id="habitForm">
+        <label class="field-label" for="habitName">Tên <span>*</span></label>
+        <input class="form-control" id="habitName" required maxlength="80" placeholder="Tập 30 phút">
+        <div class="habit-icon-picker" id="habitIconPicker">
+          <button type="button" class="habit-icon-opt selected" data-icon="💪">💪</button>
+          <button type="button" class="habit-icon-opt" data-icon="📖">📖</button>
+          <button type="button" class="habit-icon-opt" data-icon="🧘">🧘</button>
+          <button type="button" class="habit-icon-opt" data-icon="💧">💧</button>
+          <button type="button" class="habit-icon-opt" data-icon="🏃">🏃</button>
+          <button type="button" class="habit-icon-opt" data-icon="😴">😴</button>
+          <button type="button" class="habit-icon-opt" data-icon="🎯">🎯</button>
+          <button type="button" class="habit-icon-opt" data-icon="✍️">✍️</button>
+          <button type="button" class="habit-icon-opt" data-icon="🥗">🥗</button>
+          <button type="button" class="habit-icon-opt" data-icon="🎵">🎵</button>
+          <button type="button" class="habit-icon-opt" data-icon="🧹">🧹</button>
+          <button type="button" class="habit-icon-opt" data-icon="🌙">🌙</button>
+        </div>
+        <div class="habit-color-picker" id="habitColorPicker">
+          <button type="button" class="habit-color-opt selected" data-color="#1d4ed8" style="background:#1d4ed8"></button>
+          <button type="button" class="habit-color-opt" data-color="#be185d" style="background:#be185d"></button>
+          <button type="button" class="habit-color-opt" data-color="#0f766e" style="background:#0f766e"></button>
+          <button type="button" class="habit-color-opt" data-color="#c2410c" style="background:#c2410c"></button>
+          <button type="button" class="habit-color-opt" data-color="#1e3a8a" style="background:#1e3a8a"></button>
+          <button type="button" class="habit-color-opt" data-color="#6d28d9" style="background:#6d28d9"></button>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="secondary-button" data-close="habitModal">Hủy</button>
+          <button type="submit" class="primary-button">Thêm</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" id="pomoNoteModal" hidden>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="pomoNoteHeading">
+      <div class="modal-header">
+        <h2 id="pomoNoteHeading">Phiên vừa xong thế nào?</h2>
+        <button class="close-button" data-close="pomoNoteModal" type="button" aria-label="Đóng">×</button>
+      </div>
+      <form id="pomoNoteForm">
+        <textarea class="form-control" id="pomoNoteInput" rows="4" maxlength="500" placeholder="Ghi lại một câu cho phiên này"></textarea>
+        <div class="modal-actions dump-actions">
+          <button type="button" class="secondary-button" data-close="pomoNoteModal">Để sau</button>
+          <button type="submit" class="primary-button">Lưu</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <audio id="pomoBellEl" src="pomo-bell.mp3?v=22" preload="auto" playsinline></audio>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="app.js?v=26"></script>
+</body>
+</html>

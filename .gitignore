@@ -1,0 +1,17 @@
+node_modules/
+webview-data/
+dist/
+build/
+__pycache__/
+*.pyc
+*.exe
+*.apk
+sync-data.json
+
+android/.gradle/
+android/local.properties
+android/build/
+android/app/build/
+android/captures/
+*.iml
+.idea/

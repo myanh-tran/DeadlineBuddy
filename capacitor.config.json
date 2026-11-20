@@ -1,0 +1,9 @@
+{
+  "appId": "com.deadlinebuddy.personal",
+  "appName": "Deadline Buddy",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true
+  }
+}

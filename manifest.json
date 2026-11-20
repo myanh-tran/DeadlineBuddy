@@ -1,0 +1,10 @@
+{
+  "name": "Deadline Buddy",
+  "short_name": "Deadline Buddy",
+  "description": "Quản lý task và nhắc deadline theo mức độ khẩn cấp.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#efe6d4",
+  "theme_color": "#efe6d4",
+  "lang": "vi"
+}

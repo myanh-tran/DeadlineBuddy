@@ -1,0 +1,19 @@
+{
+  "name": "deadline-buddy",
+  "private": true,
+  "version": "0.5.0",
+  "description": "Deadline Buddy cho một mình dùng trên Android",
+  "scripts": {
+    "copy-www": "node copy-www.js",
+    "android:sync": "npm run copy-www && npx cap sync android",
+    "android:apk": "npm run android:sync && cd android && gradlew.bat assembleDebug"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/core": "^8.5.3"
+  },
+  "dependencies": {
+    "@capacitor/local-notifications": "^8.3.1"
+  }
+}
