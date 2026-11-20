@@ -64,7 +64,7 @@ function applyAtelierSnapshot(data) {
 function atelierLiveDraft(bag) {
   const today = dateKey(new Date());
   const minutes = (typeof pomoSessions === 'function' ? pomoSessions() : []).filter(session => session.date === today).reduce((sum, session) => sum + (Number(session.minutes) || 0), 0);
-  const todos = (state.tasks || []).filter(task => task.priority === 'high' && task.status === 'done' && task.updatedAt && dateKey(task.updatedAt) === today).length;
+  const todos = (state.tasks || []).filter(task => task.priority === 'high' && task.status === 'done' && task.completedAt && dateKey(task.completedAt) === today).length;
   return { deepMinutes: minutes, reading: !!bag.draft.reading, lowScroll: !!bag.draft.lowScroll, todos };
 }
 

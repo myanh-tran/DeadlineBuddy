@@ -47,7 +47,30 @@ async function initStorage() {
     try { state.tasks=JSON.parse(localStorage.getItem(LEGACY_KEY))||[]; } catch { state.tasks=[]; }
     showToast('Không mở được IndexedDB. Dữ liệu tạm dùng localStorage.');
   }
+  await backfillCompletedAt();
   render();
+}
+function repeatValue(value){return ['daily','weekly','monthly'].includes(value)?value:'none';}
+function shiftDue(dueAt, repeat){
+  const base=parseDate(dueAt);
+  const next=base&&!Number.isNaN(base.getTime())?new Date(base.getTime()):new Date();
+  if(repeat==='weekly') next.setDate(next.getDate()+7);
+  else if(repeat==='monthly') next.setMonth(next.getMonth()+1);
+  else next.setDate(next.getDate()+1);
+  return next.toISOString();
+}
+async function backfillCompletedAt(){
+  const dirty=state.tasks.filter(task=>{
+    if(task.status==='done'&&!task.completedAt){task.completedAt=task.updatedAt||new Date().toISOString();return true;}
+    return false;
+  });
+  for(const task of dirty) await persistTask(task);
+}
+function withCompletedAt(task){
+  const next={...task,repeat:repeatValue(task.repeat)};
+  if(next.status==='done'){if(!next.completedAt) next.completedAt=next.updatedAt||new Date().toISOString();}
+  else delete next.completedAt;
+  return next;
 }
 async function persistTask(task) {
   task.updatedAt = new Date().toISOString();
@@ -305,7 +328,7 @@ function anyModalOpen(){return ['taskModal','settingsModal','habitModal','dumpMo
 function openModal(id) { $(id).hidden=false; document.body.style.overflow='hidden'; if(id==='taskModal') setTimeout(()=>$('taskTitle').focus(),50); if(id==='dumpModal') setTimeout(()=>$('dumpLines').focus(),50); if(id==='pomoNoteModal') setTimeout(()=>$('pomoNoteInput').focus(),50); }
 function closeModal(id) { const modal=$(id);if(modal)modal.hidden=true;if(!anyModalOpen())document.body.style.overflow=''; }
 function resetTaskForm() { $('taskForm').reset(); $('taskId').value=''; $('taskPriority').value='medium'; $('taskEstimate').value='60'; $('modalTitle').textContent='Thêm task mới'; if($('deleteTaskBtn')) $('deleteTaskBtn').hidden=true; $('taskDue').value=localDateTimeValue(new Date(Date.now()+3*86400000)); updateReminderPreview(); }
-function editTask(task) { resetTaskForm(); $('taskId').value=task.id; $('taskTitle').value=task.title; $('taskCategory').value=task.category||''; $('taskDue').value=task.dueAt&&!Number.isNaN(new Date(task.dueAt).getTime())?localDateTimeValue(task.dueAt):''; $('taskPriority').value=task.priority||'medium'; $('taskEstimate').value=String(task.estimate||60); $('taskNotes').value=task.notes||''; $('modalTitle').textContent='Chỉnh sửa task'; if($('deleteTaskBtn')) $('deleteTaskBtn').hidden=false; updateReminderPreview(); openModal('taskModal'); }
+function editTask(task) { resetTaskForm(); $('taskId').value=task.id; $('taskTitle').value=task.title; $('taskCategory').value=task.category||''; $('taskDue').value=task.dueAt&&!Number.isNaN(new Date(task.dueAt).getTime())?localDateTimeValue(task.dueAt):''; $('taskPriority').value=task.priority||'medium'; $('taskEstimate').value=String(task.estimate||60); if($('taskRepeat')) $('taskRepeat').value=repeatValue(task.repeat); $('taskNotes').value=task.notes||''; $('modalTitle').textContent='Chỉnh sửa task'; if($('deleteTaskBtn')) $('deleteTaskBtn').hidden=false; updateReminderPreview(); openModal('taskModal'); }
 function nextWeekday(target, now){
   const due=startOfDay(now);
   due.setDate(due.getDate()+((target-due.getDay()+7)%7));
@@ -385,26 +408,31 @@ async function createDumpTasks(event){
   const now=new Date().toISOString();
   for(const line of titles){
     const parsed=parseTaskText(line);
-    await persistTask({id:uid(),title:(parsed.title||line).slice(0,120),category:'',dueAt:parsed.dueAt||dueAt,priority:'medium',estimate:60,notes:'',status:'not-started',progress:0,createdAt:now,updatedAt:now});
+    await persistTask({id:uid(),title:(parsed.title||line).slice(0,120),category:'',dueAt:parsed.dueAt||dueAt,priority:'medium',estimate:60,notes:'',repeat:'none',status:'not-started',progress:0,createdAt:now,updatedAt:now});
   }
   closeModal('dumpModal');
   showToast(`Đã tạo ${titles.length} task.`);
 }
 function updateReminderPreview() { const val=$('taskDue').value; if(!val){$('reminderPreview').querySelector('p').textContent='Thêm deadline để xem lịch nhắc.';return;} const task={dueAt:new Date(val).toISOString(),status:'not-started'}; const days=dayDiff(parseDate(task.dueAt)); const count=days>2?1:days===2?2:3; $('reminderPreview').querySelector('p').textContent=`Dự kiến ${count} lần/ngày · ${days<0?'deadline đã qua':days===0?'deadline hôm nay':`còn ${days} ngày`}. Hoàn thành task sẽ dừng nhắc.`; }
-async function handleSubmit(event) { event.preventDefault(); const parsed=parseTaskText($('taskTitle').value); const title=(parsed.title||$('taskTitle').value).trim(); if(!title)return; if(parsed.dueAt){$('taskTitle').value=title;$('taskDue').value=localDateTimeValue(parsed.dueAt);} const id=$('taskId').value||uid(); const previous=state.tasks.find(t=>t.id===id); const dueAt=new Date(parsed.dueAt||$('taskDue').value); if(Number.isNaN(dueAt.getTime())){showToast('M kiểm tra lại deadline nhé.');return;} const task={id,title,category:$('taskCategory').value.trim(),dueAt:dueAt.toISOString(),priority:$('taskPriority').value,estimate:Number($('taskEstimate').value),notes:$('taskNotes').value.trim(),status:previous?.status||'not-started',progress:previous?.progress||0,createdAt:previous?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()}; await persistTask(task); closeModal('taskModal'); showToast(previous?'Đã cập nhật task.':'Đã thêm task mới.'); }
+async function handleSubmit(event) { event.preventDefault(); const parsed=parseTaskText($('taskTitle').value); const title=(parsed.title||$('taskTitle').value).trim(); if(!title)return; if(parsed.dueAt){$('taskTitle').value=title;$('taskDue').value=localDateTimeValue(parsed.dueAt);} const id=$('taskId').value||uid(); const previous=state.tasks.find(t=>t.id===id); const dueAt=new Date(parsed.dueAt||$('taskDue').value); if(Number.isNaN(dueAt.getTime())){showToast('M kiểm tra lại deadline nhé.');return;} const task={id,title,category:$('taskCategory').value.trim(),dueAt:dueAt.toISOString(),priority:$('taskPriority').value,estimate:Number($('taskEstimate').value),notes:$('taskNotes').value.trim(),repeat:repeatValue($('taskRepeat')&&$('taskRepeat').value),status:previous?.status||'not-started',progress:previous?.progress||0,createdAt:previous?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()}; if(task.status==='done') task.completedAt=previous?.completedAt||previous?.updatedAt||task.updatedAt; await persistTask(task); closeModal('taskModal'); showToast(previous?'Đã cập nhật task.':'Đã thêm task mới.'); }
 async function changeTaskStatus(id, status) {
   const task=state.tasks.find(t=>t.id===id);
   if(!task || !['not-started','in-progress','done'].includes(status)) return;
+  const wasDone=task.status==='done';
   task.status=status;
-  if(status==='done') task.progress=100;
-  else if(status==='not-started') task.progress=0;
-  else task.progress=Math.max(1,Math.min(99,Number(task.progress)||25));
+  task.repeat=repeatValue(task.repeat);
+  if(status==='done'){task.progress=100; if(!task.completedAt) task.completedAt=new Date().toISOString();}
+  else { delete task.completedAt; if(status==='not-started') task.progress=0; else task.progress=Math.max(1,Math.min(99,Number(task.progress)||25)); }
   await persistTask(task);
+  if(status==='done' && !wasDone && task.repeat!=='none'){
+    const now=new Date().toISOString();
+    await persistTask({id:uid(),title:task.title,category:task.category||'',dueAt:shiftDue(task.dueAt,task.repeat),priority:task.priority||'medium',estimate:Number(task.estimate||60),notes:task.notes||'',repeat:task.repeat,status:'not-started',progress:0,createdAt:now,updatedAt:now});
+  }
   showToast(status==='done'?'Đã đánh dấu task là đã làm ✨':status==='in-progress'?'Đã chuyển task sang đang làm.':'Đã chuyển task về chưa làm.');
 }
-async function toggleTask(id) { const task=state.tasks.find(t=>t.id===id); if(!task)return; if(isDone(task)){task.status='in-progress';task.progress=Math.min(task.progress||0,99);await persistTask(task);showToast('Đã mở lại task.');}else{task.status='done';task.progress=100;await persistTask(task);showToast('Xong một việc rồi đó ✨');} }
-async function adjustProgress(id) { const task=state.tasks.find(t=>t.id===id);if(!task)return; const current=Number(task.progress||0); const next=current>=75?100:current+25;task.progress=next;task.status=next===100?'done':'in-progress';await persistTask(task);showToast(next===100?'Task hoàn thành — đã dừng nhắc.':`Tiến độ đã cập nhật: ${next}%.`); }
-async function taskMenu(id) { const task=state.tasks.find(t=>t.id===id);if(!task)return;const choice=prompt(`Task: ${task.title}\nNhập 1 để chỉnh sửa, 2 để xóa, 3 để đánh dấu đang làm.\n(Hủy để quay lại)`);if(choice==='1')editTask(task);else if(choice==='2'&&confirm(`Xóa task “${task.title}”?`))removeTask(id);else if(choice==='3'){task.status='in-progress';await persistTask(task);showToast('Đã chuyển sang đang làm.');} }
+async function toggleTask(id) { const task=state.tasks.find(t=>t.id===id); if(!task)return; await changeTaskStatus(id,isDone(task)?'in-progress':'done'); }
+async function adjustProgress(id) { const task=state.tasks.find(t=>t.id===id);if(!task)return; const current=Number(task.progress||0); const next=current>=75?100:current+25; if(next===100){await changeTaskStatus(id,'done');return;} task.progress=next; task.status='in-progress'; delete task.completedAt; await persistTask(task); showToast(`Tiến độ đã cập nhật: ${next}%.`); }
+async function taskMenu(id) { const task=state.tasks.find(t=>t.id===id);if(!task)return;const choice=prompt(`Task: ${task.title}\nNhập 1 để chỉnh sửa, 2 để xóa, 3 để đánh dấu đang làm.\n(Hủy để quay lại)`);if(choice==='1')editTask(task);else if(choice==='2'&&confirm(`Xóa task “${task.title}”?`))removeTask(id);else if(choice==='3')await changeTaskStatus(id,'in-progress'); }
 function reminderKey(task,time,day) { return `deadline-buddy-notified:${task.id}:${day}:${time}`; }
 function dueWithinNextWeek(task, now=new Date()) {
   if(isDone(task)||!task.dueAt)return false;
@@ -561,14 +589,15 @@ function requestNotifications() {
   if(!('Notification' in window)){showToast('Trình duyệt này chưa hỗ trợ thông báo.');return;} Notification.requestPermission().then(permission=>{if(permission==='granted'){showToast('Đã bật thông báo. Giữ app mở để kiểm tra lịch nhắc; tổng hợp task sẽ gửi buổi sáng và buổi tối.');scheduleVisibleReminders();}else showToast('Thông báo chưa được cấp quyền.');});
 }
 function setView(view) { if(view==='tasks') view=TASK_VIEWS.includes(state.taskScope)?state.taskScope:'today'; if(TASK_VIEWS.includes(view)) state.taskScope=view; state.view=view;state.filter='all';document.querySelectorAll('.filter-chip').forEach(b=>b.classList.toggle('selected',b.dataset.filter==='all'));render(); }
-function exportData() { const payload={app:'Deadline Buddy',version:1,exportedAt:new Date().toISOString(),tasks:state.tasks,settings:settings(),moods:moods(),habits:habits(),atelier:typeof atelierSnapshot==='function'?atelierSnapshot():null};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`deadline-buddy-backup-${dateKey(new Date())}.json`;a.click();URL.revokeObjectURL(url);showToast('Đã xuất bản sao lưu JSON.'); }
-function importData(file) { const reader=new FileReader();reader.onload=async()=>{try{const data=JSON.parse(reader.result);const tasks=Array.isArray(data)?data:data.tasks;if(!Array.isArray(tasks))throw new Error('invalid');if(!confirm(`Nhập ${tasks.length} task? Task trùng ID sẽ được cập nhật.`))return;for(const task of tasks){if(!task.id||!task.title||!task.dueAt)continue;await persistTask({...task,updatedAt:new Date().toISOString()});}if(data.settings)setSettings(data.settings);if(data.moods&&typeof data.moods==='object')writeLocal(MOOD_KEY,data.moods);if(Array.isArray(data.habits))writeLocal(HABIT_KEY,data.habits);if(data.atelier&&typeof applyAtelierSnapshot==='function')applyAtelierSnapshot(data.atelier);render();showToast('Đã nhập dữ liệu.');}catch{showToast('File không hợp lệ hoặc không đọc được.');}};reader.readAsText(file); }
+function exportData() { const payload={app:'Deadline Buddy',version:1,exportedAt:new Date().toISOString(),tasks:state.tasks,settings:settings(),moods:moods(),habits:habits(),atelier:typeof atelierSnapshot==='function'?atelierSnapshot():null,'deadline-buddy-pomo-sessions':pomoSessions(),'deadline-buddy-pomo-settings':pomoSettings()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`deadline-buddy-backup-${dateKey(new Date())}.json`;a.click();URL.revokeObjectURL(url);showToast('Đã xuất bản sao lưu JSON.'); }
+function applyPomoPayload(data){ if(!data||typeof data!=='object')return; if(Array.isArray(data['deadline-buddy-pomo-sessions'])) savePomoSessions(data['deadline-buddy-pomo-sessions']); const cfg=data['deadline-buddy-pomo-settings']; if(cfg&&typeof cfg==='object'&&!Array.isArray(cfg)) writeLocal(POMO_SETTINGS_KEY,cfg); if(!pomoRunning&&pomoIndex===0&&!pomoStudyStartedAt){pomoStages=buildPomoStages();pomoRemaining=pomoStages[0].minutes*60;} }
+function importData(file) { const reader=new FileReader();reader.onload=async()=>{try{const data=JSON.parse(reader.result);const tasks=Array.isArray(data)?data:data.tasks;if(!Array.isArray(tasks))throw new Error('invalid');if(!confirm(`Nhập ${tasks.length} task? Task trùng ID sẽ được cập nhật.`))return;for(const task of tasks){if(!task.id||!task.title||!task.dueAt)continue;await persistTask(withCompletedAt({...task,updatedAt:task.updatedAt||new Date().toISOString()}));}if(data.settings)setSettings(data.settings);if(data.moods&&typeof data.moods==='object')writeLocal(MOOD_KEY,data.moods);if(Array.isArray(data.habits))writeLocal(HABIT_KEY,data.habits);if(data.atelier&&typeof applyAtelierSnapshot==='function')applyAtelierSnapshot(data.atelier);applyPomoPayload(data);render();showToast('Đã nhập dữ liệu.');}catch{showToast('File không hợp lệ hoặc không đọc được.');}};reader.readAsText(file); }
 function openSettings() { const s=settings();$('morningDigestTime').value=s.morningDigest;$('eveningDigestTime').value=s.eveningDigest;$('noonTime').value=s.noon;$('eveningTime').value=s.evening;$('lateTime').value=s.late;if($('syncUrlInput'))$('syncUrlInput').value=syncUrl();openModal('settingsModal'); }
 function saveSettings() { const s={morningDigest:$('morningDigestTime').value||'08:00',eveningDigest:$('eveningDigestTime').value||'20:00',noon:$('noonTime').value||'12:00',evening:$('eveningTime').value||'19:00',late:$('lateTime').value||'21:00',updatedAt:new Date().toISOString()};setSettings(s);const url=($('syncUrlInput').value||'').trim().replace(/\/$/,'');localStorage.setItem(SYNC_URL_KEY,url);closeModal('settingsModal');showToast('Đã lưu giờ nhắc sáng và tối.');render();scheduleVisibleReminders();scheduleSync(); }
 const SYNC_URL_KEY='deadline-buddy-sync-url';
 let syncing=false, applyingSync=false, syncTimer=null;
 function syncUrl(){return (localStorage.getItem(SYNC_URL_KEY)||'').replace(/\/$/,'');}
-function localSnapshot(){return {tasks:state.tasks,moods:moods(),habits:habits(),settings:settings(),deletedTasks:readLocal('deadline-buddy-deleted-tasks',{}),deletedHabits:readLocal('deadline-buddy-deleted-habits',{}),atelier:typeof atelierSnapshot==='function'?atelierSnapshot():null};}
+function localSnapshot(){return {tasks:state.tasks,moods:moods(),habits:habits(),settings:settings(),deletedTasks:readLocal('deadline-buddy-deleted-tasks',{}),deletedHabits:readLocal('deadline-buddy-deleted-habits',{}),atelier:typeof atelierSnapshot==='function'?atelierSnapshot():null,'deadline-buddy-pomo-sessions':pomoSessions(),'deadline-buddy-pomo-settings':pomoSettings()};}
 function scheduleSync(){if(applyingSync||!syncUrl())return;clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncNow(false),900);}
 async function replaceAllTasks(tasks){
   state.tasks=tasks;
@@ -583,7 +612,8 @@ async function applySnapshot(data){
     writeLocal(MOOD_KEY,data.moods||{});
     writeLocal(HABIT_KEY,data.habits||[]);
     if(data.settings)localStorage.setItem(SETTINGS_KEY,JSON.stringify({...DEFAULT_SETTINGS,...data.settings}));if(data.atelier&&typeof applyAtelierSnapshot==='function')applyAtelierSnapshot(data.atelier);
-    await replaceAllTasks(Array.isArray(data.tasks)?data.tasks:[]);
+    applyPomoPayload(data);
+    await replaceAllTasks((Array.isArray(data.tasks)?data.tasks:[]).map(withCompletedAt));
     render();
   } finally { applyingSync=false; }
 }
@@ -595,14 +625,14 @@ async function restoreSavedTasks(){
     if(!response.ok)return;
     const remote=await response.json();
     const remoteTasks=Array.isArray(remote.tasks)?remote.tasks:[];
-    if(remote.atelier&&typeof atelierSnapshot==='function'&&typeof applyAtelierSnapshot==='function'){const local=atelierSnapshot();if(!local.updatedAt||String(remote.atelier.updatedAt||'')>=String(local.updatedAt||''))applyAtelierSnapshot(remote.atelier);}if(!remoteTasks.length)return;
+    if(remote.atelier&&typeof atelierSnapshot==='function'&&typeof applyAtelierSnapshot==='function'){const local=atelierSnapshot();if(!local.updatedAt||String(remote.atelier.updatedAt||'')>=String(local.updatedAt||''))applyAtelierSnapshot(remote.atelier);}applyPomoPayload(remote);if(!remoteTasks.length)return;
     const byId=new Map(state.tasks.map(task=>[task.id,task]));
     let changed=state.tasks.length!==remoteTasks.length;
     for(const task of remoteTasks){
       const old=byId.get(task.id);
       if(!old||String(task.updatedAt||'')>=String(old.updatedAt||'')){
         if(!old)changed=true;
-        byId.set(task.id,task);
+        byId.set(task.id,withCompletedAt(task));
       }
     }
     if(!changed && byId.size===state.tasks.length)return;
@@ -650,7 +680,7 @@ const POMO_SETTINGS_KEY='deadline-buddy-pomo-settings';
 const POMO_SESSION_KEY='deadline-buddy-pomo-sessions';
 const DEFAULT_POMO={focus:50,short:10,long:15,rounds:4};
 function clampPomo(value,min,max,fallback){const n=Number(value);return Number.isFinite(n)?Math.min(max,Math.max(min,Math.round(n))):fallback;}
-function pomoSettings(){const saved=readLocal(POMO_SETTINGS_KEY,{});return {focus:clampPomo(saved.focus,1,180,DEFAULT_POMO.focus),short:clampPomo(saved.short,1,60,DEFAULT_POMO.short),long:clampPomo(saved.long,1,120,DEFAULT_POMO.long),rounds:clampPomo(saved.rounds,1,8,DEFAULT_POMO.rounds)};}
+function pomoSettings(){const saved=readLocal(POMO_SETTINGS_KEY,{});const next={focus:clampPomo(saved.focus,1,180,DEFAULT_POMO.focus),short:clampPomo(saved.short,1,60,DEFAULT_POMO.short),long:clampPomo(saved.long,1,120,DEFAULT_POMO.long),rounds:clampPomo(saved.rounds,1,8,DEFAULT_POMO.rounds)};if(saved.updatedAt)next.updatedAt=saved.updatedAt;return next;}
 function buildPomoStages(settings=pomoSettings()){const stages=[];for(let i=0;i<settings.rounds;i++){stages.push({kind:'study',minutes:settings.focus});const last=i===settings.rounds-1;stages.push({kind:'break',minutes:last?settings.long:settings.short,long:last});}return stages;}
 function pomoSessions(){const list=readLocal(POMO_SESSION_KEY,[]);return Array.isArray(list)?list:[];}
 function savePomoSessions(list){writeLocal(POMO_SESSION_KEY,list.slice(-400));}
@@ -738,7 +768,7 @@ function resetPomo(){completeStudySession();clearInterval(pomoInterval);pomoInte
 function skipPomo(){advancePomo();if(pomoRunning)pomoLastTick=Date.now();}
 function openPomoNote(id){const session=pomoSessions().find(item=>item.id===id);if(!session||!$('pomoNoteModal'))return;pomoNoteId=id;if($('pomoNoteHeading'))$('pomoNoteHeading').textContent=session.note?'Sửa ghi chú phiên':'Phiên vừa xong thế nào?';$('pomoNoteInput').value=session.note||'';openModal('pomoNoteModal');}
 function savePomoNote(event){if(event?.preventDefault)event.preventDefault();const all=pomoSessions();const session=all.find(item=>item.id===pomoNoteId);if(!session){closeModal('pomoNoteModal');return;}session.note=$('pomoNoteInput').value.trim();savePomoSessions(all);closeModal('pomoNoteModal');renderPomoHistory();showToast('Đã lưu ghi chú.');}
-function savePomoSetup(event){if(event?.preventDefault)event.preventDefault();const next={focus:clampPomo($('pomoFocusMin').value,1,180,DEFAULT_POMO.focus),short:clampPomo($('pomoShortMin').value,1,60,DEFAULT_POMO.short),long:clampPomo($('pomoLongMin').value,1,120,DEFAULT_POMO.long),rounds:clampPomo($('pomoRounds').value,1,8,DEFAULT_POMO.rounds)};writeLocal(POMO_SETTINGS_KEY,next);const fresh=!pomoRunning&&pomoIndex===0&&pomoRemaining===pomoStages[0].minutes*60&&!pomoStudyStartedAt;if(!fresh){showToast('Đã lưu giờ. Phiên hiện tại giữ nhịp cũ, bấm Đặt lại để dùng giờ mới.');return;}pomoStages=buildPomoStages(next);pomoRemaining=pomoStages[0].minutes*60;renderPomo();showToast('Đã lưu giờ Pomodoro.');}
+function savePomoSetup(event){if(event?.preventDefault)event.preventDefault();const next={focus:clampPomo($('pomoFocusMin').value,1,180,DEFAULT_POMO.focus),short:clampPomo($('pomoShortMin').value,1,60,DEFAULT_POMO.short),long:clampPomo($('pomoLongMin').value,1,120,DEFAULT_POMO.long),rounds:clampPomo($('pomoRounds').value,1,8,DEFAULT_POMO.rounds),updatedAt:new Date().toISOString()};writeLocal(POMO_SETTINGS_KEY,next);const fresh=!pomoRunning&&pomoIndex===0&&pomoRemaining===pomoStages[0].minutes*60&&!pomoStudyStartedAt;if(!fresh){showToast('Đã lưu giờ. Phiên hiện tại giữ nhịp cũ, bấm Đặt lại để dùng giờ mới.');return;}pomoStages=buildPomoStages(next);pomoRemaining=pomoStages[0].minutes*60;renderPomo();showToast('Đã lưu giờ Pomodoro.');}
 function renderPomoHistory(){const grid=$('pomoHistGrid');if(!grid)return;const settings=pomoSettings();const editing=['pomoFocusMin','pomoShortMin','pomoLongMin','pomoRounds'].some(id=>document.activeElement===$(id));if(!editing){if($('pomoFocusMin'))$('pomoFocusMin').value=settings.focus;if($('pomoShortMin'))$('pomoShortMin').value=settings.short;if($('pomoLongMin'))$('pomoLongMin').value=settings.long;if($('pomoRounds'))$('pomoRounds').value=settings.rounds;}const cursor=new Date(state.pomoHistCursor.getFullYear(),state.pomoHistCursor.getMonth(),1);if($('pomoHistTitle'))$('pomoHistTitle').textContent=cursor.toLocaleDateString('vi-VN',{month:'long',year:'numeric'});const sessions=pomoSessions();const counts={};for(const session of sessions)counts[session.date]=(counts[session.date]||0)+1;const first=(cursor.getDay()+6)%7;const daysInMonth=new Date(cursor.getFullYear(),cursor.getMonth()+1,0).getDate();const today=dateKey(new Date());const cells=[];for(let i=0;i<first;i++)cells.push('<span></span>');for(let day=1;day<=daysInMonth;day++){const key=dateKey(new Date(cursor.getFullYear(),cursor.getMonth(),day));const count=counts[key]||0;cells.push(`<button type="button" class="pomo-hist-daybtn ${key===state.pomoHistDate?'selected':''} ${key===today?'today':''} ${count?'has':''}" data-pomo-day="${key}"><strong>${day}</strong>${count?`<small>${count}</small>`:''}</button>`);}grid.innerHTML=cells.join('');const dayEl=$('pomoHistDay');if(!dayEl)return;const list=sessions.filter(session=>session.date===state.pomoHistDate).sort((a,b)=>a.startedAt.localeCompare(b.startedAt));const heading=new Date(`${state.pomoHistDate}T12:00:00`).toLocaleDateString('vi-VN',{weekday:'long',day:'numeric',month:'long'});dayEl.innerHTML=list.length?`<h3>${escapeHtml(heading)}</h3>${list.map(session=>{const start=new Date(session.startedAt).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});const end=new Date(session.endedAt).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});return `<article class="pomo-session-card"><div><strong>${start} – ${end}</strong><span>${session.minutes} phút</span></div>${session.title?`<p>${escapeHtml(session.title)}</p>`:'<p>Không gắn task</p>'}${session.note?`<small>${escapeHtml(session.note)}</small>`:'<small>Chưa có ghi chú</small>'}<button type="button" class="secondary-button" data-pomo-note="${escapeHtml(session.id)}">Sửa ghi chú</button></article>`;}).join('')}`:`<h3>${escapeHtml(heading)}</h3><p class="pomo-focus-empty">Ngày này chưa có phiên tập trung.</p>`;}
 
 function wireEvents() { if(typeof wireAtelier==='function')wireAtelier();

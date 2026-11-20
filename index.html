@@ -378,6 +378,17 @@
             </select>
           </div>
         </div>
+        <div class="form-row">
+          <div>
+            <label class="field-label" for="taskRepeat">Lặp lại</label>
+            <select class="form-control" id="taskRepeat">
+              <option value="none" selected>Không lặp</option>
+              <option value="daily">Mỗi ngày</option>
+              <option value="weekly">Mỗi tuần</option>
+              <option value="monthly">Mỗi tháng</option>
+            </select>
+          </div>
+        </div>
         <label class="field-label" for="taskNotes">Ghi chú (không bắt buộc)</label>
         <textarea class="form-control" id="taskNotes" rows="3" maxlength="1000" placeholder="Bước đầu tiên cần làm là gì?"></textarea>
         <div class="reminder-preview" id="reminderPreview">
@@ -503,6 +514,6 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="atelier-lib.js?v=1"></script>
   <script src="atelier.js?v=1"></script>
-  <script src="app.js?v=32"></script>
+  <script src="app.js?v=33"></script>
 </body>
 </html>

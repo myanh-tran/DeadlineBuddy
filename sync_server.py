@@ -19,7 +19,11 @@ def now_iso():
     return datetime.now(timezone.utc).isoformat()
 
 def empty_store():
-    return {"tasks": [], "moods": {}, "habits": [], "settings": {}, "deletedTasks": {}, "deletedHabits": {}, "atelier": None}
+    return {
+        "tasks": [], "moods": {}, "habits": [], "settings": {},
+        "deletedTasks": {}, "deletedHabits": {}, "atelier": None,
+        "deadline-buddy-pomo-sessions": [], "deadline-buddy-pomo-settings": {},
+    }
 
 def load_store():
     if not DATA.exists():
@@ -37,6 +41,35 @@ def save_store(data):
 
 def newer(a, b):
     return str(a or "") >= str(b or "")
+
+def merge_sessions(current, incoming):
+    merged = {}
+    for session in list(current or []) + list(incoming or []):
+        if not isinstance(session, dict):
+            continue
+        sid = session.get("id") or "|".join([
+            str(session.get("startedAt") or ""),
+            str(session.get("endedAt") or ""),
+            str(session.get("minutes") or ""),
+        ])
+        old = merged.get(sid)
+        if not old or newer(session.get("endedAt") or session.get("startedAt"), old.get("endedAt") or old.get("startedAt")):
+            merged[sid] = session
+    sessions = sorted(merged.values(), key=lambda item: str(item.get("startedAt") or ""))
+    return sessions[-400:]
+
+def merge_pomo_settings(current, incoming, present):
+    current = current if isinstance(current, dict) else {}
+    if not present:
+        return current
+    incoming = incoming if isinstance(incoming, dict) else {}
+    if not incoming:
+        return current
+    if not current:
+        return incoming
+    if incoming.get("updatedAt") or current.get("updatedAt"):
+        return incoming if newer(incoming.get("updatedAt"), current.get("updatedAt")) else current
+    return current
 
 def merge(current, incoming):
     current = current or empty_store()
@@ -95,6 +128,11 @@ def merge(current, incoming):
     if incoming_atelier and (not atelier or newer(incoming_atelier.get("updatedAt"), (atelier or {}).get("updatedAt"))):
         atelier = incoming_atelier
 
+    session_key = "deadline-buddy-pomo-sessions"
+    settings_key = "deadline-buddy-pomo-settings"
+    sessions = merge_sessions(current.get(session_key), incoming.get(session_key) if session_key in incoming else None)
+    pomo_settings = merge_pomo_settings(current.get(settings_key), incoming.get(settings_key), settings_key in incoming)
+
     return {
         "tasks": task_list,
         "moods": moods,
@@ -103,6 +141,8 @@ def merge(current, incoming):
         "deletedTasks": deleted_tasks,
         "deletedHabits": deleted_habits,
         "atelier": atelier,
+        session_key: sessions,
+        settings_key: pomo_settings,
         "syncedAt": now_iso(),
     }
 
