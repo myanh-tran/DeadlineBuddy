@@ -65,7 +65,7 @@ function atelierLiveDraft(bag) {
   const today = dateKey(new Date());
   const minutes = (typeof pomoSessions === 'function' ? pomoSessions() : []).filter(session => session.date === today).reduce((sum, session) => sum + (Number(session.minutes) || 0), 0);
   const todos = (state.tasks || []).filter(task => task.priority === 'high' && task.status === 'done' && task.completedAt && dateKey(task.completedAt) === today).length;
-  return { deepMinutes: minutes, reading: !!bag.draft.reading, lowScroll: !!bag.draft.lowScroll, todos };
+  return { deepMinutes: minutes, todos };
 }
 
 function atelierAbsorb(bag, tiers) {
@@ -91,22 +91,113 @@ function atelierAbsorb(bag, tiers) {
   return { ...bag, stock, keycaps, setup, pity, reveal, pending: [] };
 }
 
-function atelierLockDay() {
+function chestExtras(have, want) {
+  const left = have.slice();
+  const extra = [];
+  for (const tier of want) {
+    const index = left.indexOf(tier);
+    if (index < 0) extra.push(tier);
+    else left.splice(index, 1);
+  }
+  return extra;
+}
+
+function pointChestTarget(points, day) {
+  let roll25 = day.roll25;
+  let roll45 = day.roll45;
+  const target = [];
+  if (points >= 25 && points < 35) {
+    if (roll25 == null) roll25 = Math.random() < 0.3;
+    if (roll25) target.push('common');
+  } else if (points >= 35 && points < 45) target.push('common');
+  else if (points >= 45 && points < 55) {
+    target.push('common');
+    if (roll45 == null) roll45 = Math.random() < 0.4;
+    if (roll45) target.push('rare');
+  } else if (points >= 55 && points < 70) target.push('rare');
+  else if (points >= 70) {
+    const count = 1 + Math.floor((points - 70) / 30);
+    for (let i = 0; i < count; i++) target.push('epic');
+  }
+  return { target, roll25: roll25 ?? null, roll45: roll45 ?? null };
+}
+
+function breakMissedStreak(bag) {
+  const bonus = { ...bag.bonus };
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const prev = bag.days.find(day => day.date === dateKey(yesterday));
+  const prevPoints = prev ? Number(prev.points) || 0 : 0;
+  if (!prev || prevPoints < 35) {
+    bonus.streak35 = 0;
+    bonus.claimed3 = false;
+    bonus.claimed7 = false;
+  }
+  if (!prev || prevPoints < 40) {
+    bonus.streak40 = 0;
+    bonus.claimed5 = false;
+  }
+  return bonus;
+}
+
+function noteStreak(bonus, points, day) {
+  const next = { ...bonus };
+  const chests = [];
+  if (points >= 35 && !day.counted35) {
+    next.streak35 += 1;
+    day.counted35 = true;
+    if (next.streak35 >= 3 && !next.claimed3) { chests.push('common'); next.claimed3 = true; }
+    if (next.streak35 >= 7 && !next.claimed7) { chests.push('epic'); next.claimed7 = true; }
+  }
+  if (points >= 40 && !day.counted40) {
+    next.streak40 += 1;
+    day.counted40 = true;
+    if (next.streak40 >= 5 && !next.claimed5) { chests.push('rare'); next.claimed5 = true; }
+  }
+  return { bonus: next, chests };
+}
+
+function atelierGrantRewards() {
+  if (!globalThis.AtelierLib) return 0;
   const bag = atelierState();
   const today = dateKey(new Date());
-  if (bag.days.some(day => day.date === today)) return;
+  const existing = bag.days.find(day => day.date === today);
+  if (existing && existing.live !== true) return 0;
   const draft = atelierLiveDraft(bag);
   const points = AtelierLib.scoreDraft(draft);
-  const base = AtelierLib.chestsForPoints(points, Math.random);
-  const streak = AtelierLib.applyStreak(bag.bonus, points);
-  const chests = ['common', ...base, ...streak.chests];
-  bag.days = [...bag.days, { ...draft, date: today, points, chests }];
-  bag.pending = [...bag.pending, ...chests];
-  bag.bonus = streak.bonus;
-  bag.draft = { deepMinutes: 0, reading: false, lowScroll: false, todos: 0 };
+  const prior = Number(existing && existing.points) || 0;
+  if (!existing) bag.bonus = breakMissedStreak(bag);
+  const day = existing ? { ...existing } : {
+    date: today, live: true, attendance: false, pointChests: [], chests: [],
+    roll25: null, roll45: null, counted35: false, counted40: false, points: 0
+  };
+  const added = [];
+  const earned = [];
+  if (!day.attendance) {
+    day.attendance = true;
+    added.push('common');
+  }
+  if (points > prior) {
+    const rolled = pointChestTarget(points, day);
+    day.roll25 = rolled.roll25;
+    day.roll45 = rolled.roll45;
+    const extra = chestExtras(day.pointChests || [], rolled.target);
+    day.pointChests = [...(day.pointChests || []), ...extra];
+    const streak = noteStreak(bag.bonus, points, day);
+    bag.bonus = streak.bonus;
+    earned.push(...extra, ...streak.chests);
+    day.points = points;
+  }
+  added.push(...earned);
+  if (existing && !added.length && points <= prior) return 0;
+  day.live = true;
+  day.deepMinutes = draft.deepMinutes;
+  day.todos = draft.todos;
+  day.chests = [...(day.chests || []), ...added];
+  bag.days = bag.days.filter(item => item.date !== today).concat(day);
+  bag.pending = [...bag.pending, ...added];
   writeAtelier(bag);
-  renderAtelier();
-  showToast(`Đã chốt ngày, ${points} điểm, ${chests.length} rương.`);
+  return earned.length;
 }
 
 function atelierOpen(all) {
@@ -206,14 +297,14 @@ function atelierScene(bag) {
 
 function atelierTodayHtml(bag) {
   const L = AtelierLib;
-  const today = dateKey(new Date());
-  const locked = bag.days.find(day => day.date === today);
-  const draft = locked || atelierLiveDraft(bag);
-  const points = locked ? locked.points : L.scoreDraft(draft);
+  const today = bag.days.find(day => day.date === dateKey(new Date()));
+  const settled = today && today.live !== true;
+  const draft = atelierLiveDraft(bag);
+  const points = L.scoreDraft(draft);
   const hint = L.deepPoints(draft.deepMinutes) === 0 ? 'Dưới 25 phút chưa có điểm. Mỗi 25 phút +10.' : `+${L.deepPoints(draft.deepMinutes)} điểm tập trung`;
-  const chestLine = locked ? `Rương điểm danh: thường${locked.chests.length > 1 ? ` · thêm: ${locked.chests.slice(1).map(tier => L.RARITY_LABEL[tier].toLowerCase()).join(', ')}` : ''}` : 'Chưa chốt. Luôn có 1 rương điểm danh, rương thêm theo điểm và chuỗi.';
+  const chestLine = bag.pending.length ? `${bag.pending.length} rương đang chờ.` : settled ? 'Rương hôm nay đã phát từ lần chốt trước.' : 'Rương điểm danh vào lần học đầu hoặc khi mở Xưởng. Rương thêm khi điểm lên ngưỡng.';
   return `<section class="atelier-score">
-      <p>${locked ? 'Đã chốt hôm nay' : 'Điểm chưa chốt'}</p>
+      <p>Điểm hôm nay</p>
       <strong>${points}</strong>
       <p>${chestLine}</p>
       <div class="atelier-meters">
@@ -227,12 +318,10 @@ function atelierTodayHtml(bag) {
       <h3>Hôm nay lấy từ việc đang làm</h3>
       <p>Tập trung ${draft.deepMinutes} phút · ${hint}</p>
       <p>Việc ưu tiên cao đã xong hôm nay: ${draft.todos} · +${draft.todos * 10}</p>
-      <button type="button" class="atelier-toggle ${draft.reading ? 'on' : ''}" data-atelier-flag="reading" ${locked ? 'disabled' : ''}>Đọc sách <span>${draft.reading ? 'Có · +10' : 'Không · +10'}</span></button>
-      <button type="button" class="atelier-toggle ${draft.lowScroll ? 'on' : ''}" data-atelier-flag="lowScroll" ${locked ? 'disabled' : ''}>Ít lướt <span>${draft.lowScroll ? 'Có · +5' : 'Không · +5'}</span></button>
-      ${locked ? `<div class="atelier-actions">${bag.pending.length ? `<button type="button" class="primary-button" data-atelier-open="one">Mở 1 rương</button>` : '<p class="atelier-muted">Hết rương đang chờ.</p>'}${bag.pending.length > 1 ? `<button type="button" class="secondary-button" data-atelier-open="all">Mở hết (${bag.pending.length})</button>` : ''}</div>` : `<button type="button" class="primary-button" data-atelier-lock>Chốt ngày</button>`}
+      <div class="atelier-actions">${bag.pending.length ? `<button type="button" class="primary-button" data-atelier-open="one">Mở 1 rương</button>` : '<p class="atelier-muted">Chưa có rương đang chờ.</p>'}${bag.pending.length > 1 ? `<button type="button" class="secondary-button" data-atelier-open="all">Mở hết (${bag.pending.length})</button>` : ''}</div>
     </section>
     <details class="atelier-rules"><summary>Luật chơi</summary>
-      <p>Mỗi ngày chốt một lần. Dưới 25 phút tập trung không tính. Từ 25 phút, mỗi 25 phút +10, không trần. Mỗi task ưu tiên cao vừa chuyển sang đã làm trong hôm nay +10. Đọc +10, ít lướt +5.</p>
+      <p>Rương vào ngay, không chờ cuối ngày. Dưới 25 phút tập trung không tính. Từ 25 phút, mỗi 25 phút +10, không trần. Mỗi task ưu tiên cao đã xong hôm nay +10. Rương đã phát không phát lại và không lấy lại khi điểm giảm.</p>
       <p>25–34 điểm có 30% thêm rương thường. 35 chắc một rương thường. 45 thêm 40% rương hiếm. 55 một rương hiếm. 70 một rương sử thi, rồi mỗi +30 điểm thêm một rương sử thi.</p>
       <p>Arm đơn một màn, arm đôi hai màn. Case phím cơ và HE là hai loại. IEM cần đủ thân, DAC, dây, eartips. Mô hình đủ 8 mảnh mới lên kệ.</p>
     </details>
@@ -453,18 +542,11 @@ function wireAtelier() {
   if (!root || root.dataset.wired) return;
   root.dataset.wired = '1';
   root.addEventListener('click', event => {
-    const node = event.target.closest('[data-atelier-tab],[data-atelier-lock],[data-atelier-open],[data-atelier-flag],[data-atelier-reset],[data-atelier-pick],[data-atelier-audio],[data-atelier-speaker],[data-atelier-light],[data-atelier-mecha],[data-atelier-codex],[data-atelier-dismiss]');
+    const node = event.target.closest('[data-atelier-tab],[data-atelier-open],[data-atelier-reset],[data-atelier-pick],[data-atelier-audio],[data-atelier-speaker],[data-atelier-light],[data-atelier-mecha],[data-atelier-codex],[data-atelier-dismiss]');
     if (!node) return;
     if (node.dataset.atelierTab) { atelierTab = node.dataset.atelierTab; atelierArmed = false; renderAtelier(); return; }
-    if (node.hasAttribute('data-atelier-lock')) { atelierLockDay(); return; }
     if (node.dataset.atelierOpen) { atelierOpen(node.dataset.atelierOpen === 'all'); return; }
     if (node.hasAttribute('data-atelier-dismiss')) { const bag = atelierState(); bag.reveal = null; writeAtelier(bag); renderAtelier(); return; }
-    if (node.dataset.atelierFlag) {
-      const bag = atelierState();
-      if (bag.days.some(day => day.date === dateKey(new Date()))) return;
-      bag.draft[node.dataset.atelierFlag] = !bag.draft[node.dataset.atelierFlag];
-      writeAtelier(bag); renderAtelier(); return;
-    }
     if (node.hasAttribute('data-atelier-reset')) {
       if (!atelierArmed) { atelierArmed = true; renderAtelier(); return; }
       writeAtelier(emptyAtelier()); atelierArmed = false; atelierTab = 'today'; atelierCat = null; renderAtelier(); showToast('Đã xoá kho Atelier.'); return;

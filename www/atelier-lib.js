@@ -1583,7 +1583,7 @@
     return Math.floor(minutes / 25) * 10;
   }
   function scoreDraft(draft) {
-    return deepPoints(draft.deepMinutes) + (draft.reading ? 10 : 0) + (draft.lowScroll ? 5 : 0) + Math.max(0, draft.todos) * 10;
+    return deepPoints(draft.deepMinutes) + Math.max(0, draft.todos) * 10;
   }
   function chestsForPoints(points, rng) {
     if (points < 25) return [];

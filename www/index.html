@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=21">
+  <link rel="stylesheet" href="styles.css?v=22">
 </head>
 <body data-theme="light">
   <div class="app-shell">
@@ -167,6 +167,7 @@
                 <div class="pomo-clock" id="pomoClock">50:00</div>
               </div>
             </div>
+            <div class="pomo-timeline" id="pomoTimeline"></div>
             <div class="pomo-controls">
               <button class="secondary-button" id="pomoResetBtn">Đặt lại</button>
               <button class="primary-button" id="pomoStartBtn">Bắt đầu</button>
@@ -187,6 +188,13 @@
             </div>
           </div>
           <form class="pomo-setup" id="pomoSetup">
+            <label class="pomo-preset">Nhịp
+              <select id="pomoPreset" aria-label="Nhịp Pomodoro">
+                <option value="custom">Tự chỉnh</option>
+                <option value="descend">Xuống dần</option>
+                <option value="classic">Pomodoro mặc định</option>
+              </select>
+            </label>
             <label>Tập trung (phút)<input id="pomoFocusMin" type="number" min="1" max="180" inputmode="numeric"></label>
             <label>Nghỉ ngắn<input id="pomoShortMin" type="number" min="1" max="60" inputmode="numeric"></label>
             <label>Nghỉ dài<input id="pomoLongMin" type="number" min="1" max="120" inputmode="numeric"></label>
@@ -272,6 +280,9 @@
               <p id="listDescription">Ưu tiên việc gần hạn hoặc chưa bắt đầu.</p>
             </div>
             <div class="panel-controls">
+              <label class="search-box">
+                <input id="searchInput" type="search" placeholder="Tìm task" aria-label="Tìm task">
+              </label>
               <select id="sortSelect" aria-label="Sắp xếp">
                 <option value="deadline">Deadline gần nhất</option>
                 <option value="priority">Ưu tiên cao nhất</option>
@@ -512,8 +523,8 @@
 
   <audio id="pomoBellEl" src="pomo-bell.mp3?v=22" preload="auto" playsinline></audio>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="atelier-lib.js?v=1"></script>
-  <script src="atelier.js?v=1"></script>
-  <script src="app.js?v=33"></script>
+  <script src="atelier-lib.js?v=2"></script>
+  <script src="atelier.js?v=3"></script>
+  <script src="app.js?v=35"></script>
 </body>
 </html>
